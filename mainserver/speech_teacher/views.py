@@ -36,7 +36,18 @@ def LoginAPI(request):
 
     return Response({"massage" : "INVALID_PASSWORD"},status=400)
 
-
+@api_view(['POST'])
+def changepw(request):
+    data = request.data
+    try:
+        input_email = data['user_email']
+        input_password = data['user_password'].encode('utf-8')
+    except Exception:
+        return Response({'massage': 'KEY_ERROR'},status=400)
+    user = ST_User.objects.get(user_email = input_email)
+    user.user_password= bcrypt.hashpw(input_password,bcrypt.gensalt()).decode('utf-8')
+    user.save()
+    return Response({'massage':"password change success"},status=200)
 
 class UserAPI(APIView):
     """
@@ -76,7 +87,7 @@ class UserAPI(APIView):
         hashed_password = bcrypt.hashpw(data['user_password'].encode('utf-8'),bcrypt.gensalt()).decode('utf-8')
         ST_User(user_email = data['user_email'],user_password = hashed_password,user_nickname = data['user_nickname']).save()
         # ST_User.objects.create(user_email = data['user_email'],user_password = hashed_password ,user_nickname = data['user_nickname'])
-        return Response({"message" : "success"},status=200)
+        return Response({"message" : "user create success"},status=200)
     
     @login_check
     def get(self,request):
