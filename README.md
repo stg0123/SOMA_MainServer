@@ -15,13 +15,13 @@
 - 시/공간적 제약을 줄여주는 모바일 앱 서비스 제공
 
 ## 시스템 구성도  
-![image](/resource/system_structure.PNG){width="90%}
+![image](/resource/system_structure.PNG){.width="90%}
 
 ## AWS 구성도  
-![image](/resource/AWS_structure.png){width="90%}
+![image](/resource/AWS_structure.png){.width="90%}
 
 ## ERD
-![image](/resource/ERD_structure.png){width="90%}
+![image](/resource/ERD_structure.png){.width="90%}
 
 
 ## 회원관리 API
