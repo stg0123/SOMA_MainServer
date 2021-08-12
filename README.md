@@ -4,9 +4,9 @@
 
 
 ## ✨Soma_MainServer✨  
-- [Soma_MainServer](https://git.swmgit.org/swm-12/12_swm48/soma_mainserver){:target="_blank"}
-- [Soma_IOS](https://git.swmgit.org/swm-12/12_swm48/soma_ios){:target="_blank"}
-- [Soma_ML](https://git.swmgit.org/swm-12/12_swm48/soma_ml){:target="_blank"}
+- [Soma_MainServer](https://git.swmgit.org/swm-12/12_swm48/soma_mainserver)
+- [Soma_IOS](https://git.swmgit.org/swm-12/12_swm48/soma_ios)
+- [Soma_ML](https://git.swmgit.org/swm-12/12_swm48/soma_ml)
 <br>
 
 ## 개요  
@@ -15,13 +15,13 @@
 - 시/공간적 제약을 줄여주는 모바일 앱 서비스 제공
 
 ## 시스템 구성도  
-![image](/resource/system_structure.PNG){:width="90%}
+![image](/resource/system_structure.PNG)
 
 ## AWS 구성도  
-![image](/resource/aws_structure.png){:width="90%}
+![image](/resource/aws_structure.png)
 
 ## ERD
-![image](/resource/ERD_structure.png){:width="90%}
+![image](/resource/ERD_structure.png)
 
 
 ## 회원관리 API
