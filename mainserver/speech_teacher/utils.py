@@ -16,6 +16,9 @@ def login_check(func):
         except ST_User.DoesNotExist:
             return Response({'massage':'INVALID USER'},status=400)
         
+        except Exception :
+            return Response({'massage':'DONT HAVE TOKEN'},status=400)
+        
         return func(self,request,*args,**kwargs)
 
     return wrapper
