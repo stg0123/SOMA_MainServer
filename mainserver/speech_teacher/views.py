@@ -49,6 +49,15 @@ def changepw(request):
     user.save()
     return Response({'massage':"password change success"},status=200)
 
+@api_view(['GET'])
+def lookup(request):
+    user = ST_User.objects.all()
+    response = []
+    for i in user:
+        response.append(i.user_email)
+    print(response)
+    return Response(response,status=200)
+
 class UserAPI(APIView):
     """
         유저 생성,조회 api
@@ -100,14 +109,11 @@ class UserAPI(APIView):
         print(serializer.data)
         data = request.data
         if serializer.data['user_email'] != data['user_email']:
-            print(1)
             request.user.user_email = data['user_email']
         if not bcrypt.checkpw(data['user_password'].encode('utf-8'),serializer.data['user_password'].encode('utf-8')):
-            print(2)
             hashed_password = bcrypt.hashpw(data['user_password'].encode('utf-8'),bcrypt.gensalt()).decode('utf-8')
             request.user.user_password= hashed_password
         if serializer.data['user_nickname'] != data['user_nickname']:
-            print(3)
             request.user.user_nickname=data['user_nickname']
         request.user.save()
         
@@ -120,3 +126,68 @@ class UserAPI(APIView):
         return Response({'message': user_email+" is delete success"},status=200)
 
 
+class UserPresentationAPI(APIView):
+    
+    @login_check
+    def post(self,request):
+        data = request.data
+        if not (data['presentation_title'] and data['presentation_time'] and data['presentation_date']) :
+            return Response({'massage': 'missing parameter'},status=400)
+
+        Presentation(user_id = request.user,
+                    presentation_title = data['presentation_title'],
+                    presentation_time = data['presentation_time'],
+                    presentation_date = data['presentation_date']
+        ).save()
+        return Response({'massage': 'create presentation'},status=200)
+
+    @login_check
+    def get(self,request):
+        queryset = Presentation.objects.filter(user_id = request.user)
+        response = []
+        for q in queryset:
+            response.append(PresentationSerializer(q).data)
+        return Response(response,status=200)
+
+class PresentationAPI(APIView):
+    
+    def get(self,request,pk):
+        try:
+            queryset = Presentation.objects.get(pk=pk)
+        except Presentation.DoesNotExist:
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        serializer = PresentationSerializer(queryset)
+        return Response(serializer.data,status=200)
+    
+    @login_check
+    def put(self,request,pk):
+        try:
+            queryset = Presentation.objects.get(pk=pk)
+        except Presentation.DoesNotExist:
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if queryset.user_id != request.user:
+            return Response({'massage':'DO NOT LOGIN ERROR'},status=400)
+        data = request.data
+        print(data)
+        queryset.presentation_title = data['presentation_title']
+        queryset.presentation_time = data['presentation_time']
+        queryset.presentation_date = data['presentation_date']
+        queryset.presentation_ex_dupword = data['presentation_ex_dupword']
+        queryset.presentation_ex_improper = data['presentation_ex_improper']
+        try:
+            queryset.save()
+        except Exception as e:
+            return Response(e,status=400)
+
+        return Response({'massage':queryset.presentation_title+' presenatataion update success'},status=200)
+
+    @login_check
+    def delete(self,request,pk):
+        try:
+            queryset = Presentation.objects.get(pk=pk)
+            presentation_title = queryset.presentation_title
+            queryset.delete()
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        
+        return Response({'massage': presentation_title +' is deleted'},status=200)
