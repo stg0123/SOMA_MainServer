@@ -1,12 +1,5 @@
 from django.db import models
-
-# Create your models here.
-class User(models.Model):
-    user_email = models.CharField(max_length=50)
-    user_password = models.CharField(max_length=50)
-    user_nickname = models.CharField(max_length=50)
-    user_create_date = models.DateTimeField(auto_now_add=True)
-    user_update_date = models.DateTimeField(auto_now=True)
+from django.db.models import manager
 
 class ST_User(models.Model):
     user_id = models.AutoField(primary_key=True)
@@ -39,3 +32,29 @@ class Presentation(models.Model):
     class Meta:
         managed = False
         db_table = "presentation"
+
+class KeyWord(models.Model):
+    keyword_id = models.AutoField(primary_key=True)
+    presentation_id = models.ForeignKey("Presentation",related_name='presentation_keyword',on_delete=models.CASCADE,db_column='presentation_id')
+    keyword_page = models.IntegerField(null=False)
+    keyword_contents = models.TextField(null=True,blank=True)
+
+    def __str__(self):
+        return str(self.presentation_id)+' '+str(self.keyword_page)+'page keyword'
+
+    class Meta:
+        managed =False
+        db_table = 'keyword'
+
+class Script(models.Model):
+    script_id = models.AutoField(primary_key=True)
+    presentation_id = models.ForeignKey("Presentation",related_name='presentation_script',on_delete=models.CASCADE,db_column='presentation_id')
+    script_page = models.IntegerField(null= False)
+    script_contents = models.TextField(null=True,blank=True)
+
+    def __str__(self):
+        return str(self.presentation_id)+' '+str(self.keyword_page)+'page script'
+    
+    class Meta:
+        managed = False
+        db_table = 'script'

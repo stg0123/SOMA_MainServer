@@ -9,7 +9,8 @@ from .utils import login_check
 import bcrypt
 import re
 import jwt
-# Create your views here.
+
+
 @api_view(['GET'])
 def HelloWorld(request):
     return Response("hello world!")
@@ -101,7 +102,7 @@ class UserAPI(APIView):
     @login_check
     def get(self,request):
         serializer = ST_UserSerializer(request.user)
-        return Response(serializer.data)
+        return Response(serializer.data,status=200)
     
     @login_check
     def put(self,request):
@@ -126,20 +127,29 @@ class UserAPI(APIView):
         return Response({'message': user_email+" is delete success"},status=200)
 
 
+
 class UserPresentationAPI(APIView):
-    
+    """
+        발표연습 생성,조회
+        
+        ---
+        ## 내용
+        - 발표연습 생성 : 유저의 발표연습 생성 로그인토큰, presentation_title, presentation_time, presentation_date 필요
+        - 발표연습 조회 : 유저의 전체 발표연습 조회 로그인토큰 필요
+    """
     @login_check
     def post(self,request):
         data = request.data
         if not (data['presentation_title'] and data['presentation_time'] and data['presentation_date']) :
             return Response({'massage': 'missing parameter'},status=400)
 
-        Presentation(user_id = request.user,
+        presentataion = Presentation(user_id = request.user,
                     presentation_title = data['presentation_title'],
                     presentation_time = data['presentation_time'],
                     presentation_date = data['presentation_date']
-        ).save()
-        return Response({'massage': 'create presentation'},status=200)
+        )
+        presentataion.save()
+        return Response({'massage': 'create presentation', 'presentation_id' : presentataion.presentation_id },status=200)
 
     @login_check
     def get(self,request):
@@ -149,8 +159,18 @@ class UserPresentationAPI(APIView):
             response.append(PresentationSerializer(q).data)
         return Response(response,status=200)
 
+
+
 class PresentationAPI(APIView):
-    
+    """
+        특정 발표연습 조회,수정,삭제 API
+        
+        ---
+        ## 내용
+        - 발표연습 조회 : url뒤의 <int:pk> 로 특정 발표연습 판별하여 특정 발표연습 세부정보 응답
+        - 발표연습 수정 : url뒤의 <int:pk> 로 특정 발표연습 수정 로그인토큰, presentation_title, presentation_time, presentation_date, presentation_ex_dupword, presentation_ex_improper 필요
+        - 발표연습 삭제 : url뒤의 <int:pk> 로 특정 발표연습 삭제 로그인토큰 필요
+    """
     def get(self,request,pk):
         try:
             queryset = Presentation.objects.get(pk=pk)
@@ -191,3 +211,165 @@ class PresentationAPI(APIView):
             return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
         
         return Response({'massage': presentation_title +' is deleted'},status=200)
+
+
+class KeyWordAPI(APIView):
+    """
+    인풋
+    {
+        "1" : "자장면, 볶음밥, 탕수육",
+        "2" : "어쩌고, 저쩌고",
+        "4" : "스트링, 스트링"        
+    }
+    
+    """
+
+    @login_check
+    def post(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        data =request.data
+        for key,val in data.items():
+            try:
+                int(key)
+            except ValueError :
+                return Response({'massage':'key is not integer error'},status=400)
+            if len(val) and (not KeyWord.objects.filter(presentation_id =presentation, keyword_page=int(key)).exists()):
+                KeyWord(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
+                print(key,val)
+        return Response({'massage':'create keyword success'},status=200)
+    
+    @login_check
+    def get(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        queryset = KeyWord.objects.filter(presentation_id=presentation).order_by('keyword_page')
+        serializer = KeyWordSerializer(queryset,many=True)
+        return Response(serializer.data,status=200)
+
+    @login_check
+    def put(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        data = request.data
+        for key,val in data.items():
+            try:
+                int(key)
+            except ValueError :
+                return Response({'massage':'key is not integer error'},status=400)
+            keyword = KeyWord.objects.filter(presentation_id = presentation, keyword_page=int(key))
+            if len(val) and keyword.exists():
+                keyword.update(keyword_contents=val)
+            elif len(val) :
+                KeyWord(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
+            print(key,val)
+        return Response({'massage':'update keyword success'},status=200)
+
+    @login_check
+    def delete(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        queryset = KeyWord.objects.filter(presentation_id=presentation)
+        queryset.delete()
+        return Response({'massage':'keyword delete success'},status=200)
+
+
+
+class ScriptAPI(APIView):
+    """
+    인풋
+    {
+        "1" : "대본1",
+        "2" : "대본2",
+        "4" : "대본3"        
+    }
+    
+    """
+
+    @login_check
+    def post(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        data =request.data
+        for key,val in data.items():
+            try:
+                int(key)
+            except ValueError :
+                return Response({'massage':'key is not integer error'},status=400)
+            if len(val) and (not Script.objects.filter(presentation_id=presentation,keyword_page=int(key)).exists()):
+                Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
+                print(key,val)
+        return Response({'massage':'create keyword success'},status=200)
+    
+    @login_check
+    def get(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        queryset = Script.objects.filter(presentation_id=presentation).order_by('keyword_page')
+        serializer = KeyWordSerializer(queryset,many=True)
+        return Response(serializer.data,status=200)
+
+    @login_check
+    def put(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+
+        data = request.data
+        for key,val in data.items():
+            try:
+                int(key)
+            except ValueError :
+                return Response({'massage':'key is not integer error'},status=400)
+            keyword = Script.objects.filter(presentation_id=presentation,keyword_page=int(key))
+            if len(val) and keyword.exists():
+                keyword.update(keyword_contents=val)
+            elif len(val) :
+                Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
+            print(key,val)
+        return Response({'massage':'update keyword success'},status=200)
+
+    @login_check
+    def delete(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+        queryset = Script.objects.filter(presentation_id=presentation)
+        queryset.delete()
+        return Response({'massage':'keyword delete success'},status=200)
