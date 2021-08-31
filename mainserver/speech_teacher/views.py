@@ -3,9 +3,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from rest_framework.request import Request
+from django.core.cache import cache
 from .models import *
 from .serializers import *
 from .utils import login_check
+import requests
+import os
 import bcrypt
 import re
 import jwt
@@ -13,7 +16,8 @@ import jwt
 
 @api_view(['GET'])
 def HelloWorld(request):
-    return Response("hello world!")
+    res = "helloworld django"
+    return Response(res,status=200)
 
 @api_view(['POST'])
 def LoginAPI(request):
@@ -52,12 +56,8 @@ def changepw(request):
 
 @api_view(['GET'])
 def lookup(request):
-    user = ST_User.objects.all()
-    response = []
-    for i in user:
-        response.append(i.user_email)
-    print(response)
-    return Response(response,status=200)
+    users =cache.get_or_set('users',ST_User.objects.all().values('user_id','user_email','user_nickname','user_create_date'))
+    return Response(list(users),status=200)
 
 class UserAPI(APIView):
     """
@@ -140,7 +140,7 @@ class UserPresentationAPI(APIView):
     @login_check
     def post(self,request):
         data = request.data
-        if not (data['presentation_title'] and data['presentation_time'] and data['presentation_date']) :
+        if ("presentation_title" not in data) or ("presentation_time" not in data) or ("presentation_date" not in data) :
             return Response({'massage': 'missing parameter'},status=400)
 
         presentataion = Presentation(user_id = request.user,
@@ -154,9 +154,7 @@ class UserPresentationAPI(APIView):
     @login_check
     def get(self,request):
         queryset = Presentation.objects.filter(user_id = request.user)
-        response = []
-        for q in queryset:
-            response.append(PresentationSerializer(q).data)
+        response = PresentationSerializer(queryset,many=True).data
         return Response(response,status=200)
 
 
@@ -373,3 +371,184 @@ class ScriptAPI(APIView):
         queryset = Script.objects.filter(presentation_id=presentation)
         queryset.delete()
         return Response({'massage':'keyword delete success'},status=200)
+
+class AllFileAPI(APIView):
+    """
+        전체 파일 보기
+        get
+    """
+    @login_check
+    def get(self,request):
+        queryset = PresentationFile.objects.filter(user_id=request.user.user_id)
+        response = []
+        for i in queryset:
+            response.append({"file_id":i.presentationfile_id ,"presentation_id":i.presentation_id.presentation_id,"file_name" : i.file_name , "file_url" : i.file.url })
+        return Response(response,status=200)
+
+
+class PresentationFileAPI(APIView):
+    """
+    인풋
+    {
+       "file" : file.확장자
+    }
+    """
+    @login_check
+    def post(self,request,presentation_id):
+        if  "file" not in request.FILES :
+            return Response({'massage':'missing file error'},status=400)
+        elif os.path.splitext(request.FILES['file'].name)[1]!='.pdf' :
+            return Response({'massage':'only possible file extenstion is PDF'})
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+        
+        if PresentationFile.objects.filter(presentation_id=presentation).exists():
+            return Response({'massage': 'already file exists error'},status=400)
+
+        file =PresentationFile(presentation_id = presentation,user_id = request.user.user_id,file_name = request.FILES['file'].name,file = request.FILES['file'])
+        file.save()
+        return Response({'massage': 'upload file success','file_id' : file.presentationfile_id},status=200)
+
+    @login_check
+    def get(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(presentation_id=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+        
+        try:
+            file= PresentationFile.objects.get(presentation_id=presentation)
+        except PresentationFile.DoesNotExist :
+            return Response({'massage':'file is not exist error'},status=400)
+
+
+        return Response({"file_id":file.presentationfile_id ,"presentation_id":file.presentation_id.presentation_id ,"file_name" : file.file_name, "file_url" : file.file.url },status=200)
+
+    @login_check
+    def put(self,request,presentation_id):
+        if  "file" not in request.FILES :
+            return Response({'massage':'missing file error'},status=400)
+        elif os.path.splitext(request.FILES['file'].name)[1]!='.pdf' :
+            return Response({'massage':'only possible file extenstion is PDF'})
+
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+        
+        try:
+            file= PresentationFile.objects.get(presentation_id=presentation)
+        except PresentationFile.DoesNotExist :
+            return Response({'massage':'file is not exist error'},status=400)
+        file.file_name=request.FILES['file'].name
+        file.file=request.FILES['file']
+        file.save()
+        return Response({'massage':str(presentation_id)+" presentation file update success"},status=200)
+
+    @login_check
+    def delete(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        
+        if presentation.user_id.user_id != request.user.user_id:
+            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+        
+        PresentationFile.objects.filter(presentation_id=presentation).delete()
+        return Response({'massage':str(presentation_id)+' presentation file is deleted'},status=200)
+
+class PresentationResultAPI(APIView):
+    """
+    결과 생성
+    -연습의 결과 생성
+    입력
+    {
+        "audio_file":audio,
+        "audio_time":int,
+    }
+    결과 조회
+    - 모든 결과의 결과id,연습번호,생성일을 반환 > 이걸가지고 디테일에서 찾아오면됨 
+    결과 삭제
+    - 연습의 모든 결과 삭제
+    """
+    @login_check
+    def post(self,request,presentation_id):
+        data =request.data
+        if "audio_file" not in request.FILES :
+            return Response({'massage':'missing file error'},status=400)
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        # res = requests.post('http://10.1.205.38:8000/',files ={"file":open(request.FILES["audio_file"],'rb')}).json()
+        # PresentationResult(presentation_id=presentation,user_id=request.user.user_id,presentation_result_file=request.FILE['audio_file'],
+        # presentation_result_time=data["audio_time"],presentation_result_score=res["score"],presentation_result_dupword=res["dupword"],
+        # presentation_result_improper=res["improper"],presentation_result_fillerwords=res["fillerwords"],presentation_result_stammering=res["stammering"],
+        # presentation_result_gap=res["gap"],presentation_result_shake=res["shake"],presentation_result_tune=res["tune"],presentation_result_speed=res["speed"]).save()
+        
+        return Response({'massage':'result success'},status=200)
+
+    @login_check
+    def get(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        queryset = PresentationResult.objects.filter(presentation_id=presentation)
+        # serializer = PresentationResultSerializer(queryset,many=True)
+        response = []
+        for q in queryset:
+            response.append({"presentation_result_id":q.presentation_result_id ,"presentation_id":q.presentation_id.presentation_id,
+            "user_id":q.user_id,"presentation_result_data":q.presentation_result_date})
+        return Response(response,status=200)
+    
+    @login_check
+    def delete(self,request,presentation_id):
+        try:
+            presentation = Presentation.objects.get(pk=presentation_id)
+        except Presentation.DoesNotExist :
+            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+        PresentationResult.objects.filter(presentation_id=presentation).delete()
+        return Response({'massage':str(presentation_id)+' result is all deleted'},status=200)
+            
+        
+class PresentationResultDetailAPI(APIView):
+    """
+    프레젠테이션 결과 상세 정보 조회
+    get - 결과 상세 정보 조회
+    put - 결과 상세 정보 수정 (필요없을 듯)
+    delete -결과 삭제
+    """
+    @login_check
+    def get(self,request,presentation_result_id):
+        try:
+            queryset = PresentationResult.objects.get(pk=presentation_result_id)
+        except PresentationResult.DoesNotExist :
+            return Response({'massage':'not found that result error'},status=400)
+        response = PresentationResultSerializer(queryset).data
+        response['presentation_result_audiofile']=queryset.presentation_result_audiofile.url
+        return Response(response,status=200)
+    
+    @login_check
+    def delete(self,request,presentation_result_id):
+        try:
+            queryset = PresentationResult.objects.get(pk=presentation_result_id)
+        except PresentationResult.DoesNotExist :
+            return Response({'massage':'not found that result error'},status=400)
+        queryset.delete()
+        return Response({'massage':str(presentation_result_id)+' presentation_result is deleted'},status=200)
+        
+        
+

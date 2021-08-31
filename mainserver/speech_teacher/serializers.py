@@ -21,3 +21,15 @@ class ScriptSerializer(serializers.ModelSerializer):
     class Meta:
         model = Script
         fields = ('script_id','presentation_id','script_page','script_contents')
+
+class PresentationFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PresentationFile
+        fields = ('presentationfile_id','presentation_id','user_id','file_name','file')
+
+class PresentationResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PresentationResult
+        fields = ('presentation_result_id','presentation_id','user_id','presentation_result_audiofile','presentation_result_time','presentation_result_score',
+        'presentation_result_dupword','presentation_result_improper','presentation_result_fillerwords','presentation_result_stammering',
+        'presentation_result_gap','presentation_result_shake','presentation_result_tune','presentation_result_speed','presentation_result_date')
