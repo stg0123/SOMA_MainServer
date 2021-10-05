@@ -26,7 +26,7 @@ def LoginAPI(request):
         input_email =data["user_email"]
         input_password = data["user_password"].encode('utf-8')
     except Exception :
-        return Response({'massage':'KEY_ERROR'},status=400)
+        return Response({'message':'KEY_ERROR'},status=400)
     
     try:
         user_ck = ST_User.objects.get(user_email = input_email)
@@ -38,8 +38,8 @@ def LoginAPI(request):
         print(access_token)
         print(jwt.decode(access_token,SECRET_KEY,algorithms='HS256'))
         return Response({'message':'success', 'access_token':access_token},status=200)
-
-    return Response({"massage" : "INVALID_PASSWORD"},status=400)
+    
+    return Response({"message" : "INVALID_PASSWORD"},status=400)
 
 @api_view(['POST'])
 def changepw(request):
