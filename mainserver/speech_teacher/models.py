@@ -1,4 +1,5 @@
 from django.db import models
+import boto3
 from django.core.cache import cache
 
 class ST_User(models.Model):
@@ -78,6 +79,9 @@ class PresentationFile(models.Model):
 
     def __str__(self):
         return str(self.file_name)
+    
+    # def delete(self, *args, **kwargs):
+    #     super().delete(*args, **kwargs)
 
     class Meta:
         managed = False

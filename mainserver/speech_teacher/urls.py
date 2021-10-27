@@ -15,4 +15,5 @@ urlpatterns = [
     path('presentationfile/<int:presentation_id>',PresentationFileAPI.as_view()),
     path('presentationresult/<int:presentation_id>',PresentationResultAPI.as_view()),
     path('presentationresultdetail/<int:presentation_result_id>',PresentationResultDetailAPI.as_view()),
+    path('presentationresulttest/',PresentationResultTestAPI.as_view()),
 ]

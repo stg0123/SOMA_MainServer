@@ -1,8 +1,11 @@
+from django.core.exceptions import ValidationError
+from django.http.response import JsonResponse
 from mainserver.settings import SECRET_KEY
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from rest_framework.request import Request
+from rest_framework.renderers import JSONRenderer
 from django.core.cache import cache
 from .models import *
 from .serializers import *
@@ -16,7 +19,8 @@ import jwt
 
 @api_view(['GET'])
 def HelloWorld(request):
-    res = "helloworld django"
+    res = "helloworld kospeech (MSS)"
+    print(request._request.META)
     return Response(res,status=200)
 
 @api_view(['POST'])
@@ -48,11 +52,11 @@ def changepw(request):
         input_email = data['user_email']
         input_password = data['user_password'].encode('utf-8')
     except Exception:
-        return Response({'massage': 'KEY_ERROR'},status=400)
+        return Response({'message': 'KEY_ERROR'},status=400)
     user = ST_User.objects.get(user_email = input_email)
     user.user_password= bcrypt.hashpw(input_password,bcrypt.gensalt()).decode('utf-8')
     user.save()
-    return Response({'massage':"password change success"},status=200)
+    return Response({'message':"password change success"},status=200)
 
 @api_view(['GET'])
 def lookup(request):
@@ -111,14 +115,14 @@ class UserAPI(APIView):
         data = request.data
         if serializer.data['user_email'] != data['user_email']:
             request.user.user_email = data['user_email']
-        if not bcrypt.checkpw(data['user_password'].encode('utf-8'),serializer.data['user_password'].encode('utf-8')):
+        if data['user_password']!="" and not bcrypt.checkpw(data['user_password'].encode('utf-8'),serializer.data['user_password'].encode('utf-8')):
             hashed_password = bcrypt.hashpw(data['user_password'].encode('utf-8'),bcrypt.gensalt()).decode('utf-8')
             request.user.user_password= hashed_password
-        if serializer.data['user_nickname'] != data['user_nickname']:
+        if data['user_nickname']!="" and serializer.data['user_nickname'] != data['user_nickname']:
             request.user.user_nickname=data['user_nickname']
         request.user.save()
         
-        return Response({'message':'success'},status=200)
+        return Response({'message':'updatesuccess'},status=200)
     
     @login_check
     def delete(self,request):
@@ -141,20 +145,34 @@ class UserPresentationAPI(APIView):
     def post(self,request):
         data = request.data
         if ("presentation_title" not in data) or ("presentation_time" not in data) or ("presentation_date" not in data) :
-            return Response({'massage': 'missing parameter'},status=400)
-
-        presentataion = Presentation(user_id = request.user,
-                    presentation_title = data['presentation_title'],
-                    presentation_time = data['presentation_time'],
-                    presentation_date = data['presentation_date']
-        )
-        presentataion.save()
-        return Response({'massage': 'create presentation', 'presentation_id' : presentataion.presentation_id },status=200)
+            return Response({'message': 'missing parameter'},status=400)
+        try:
+            presentataion = Presentation(user_id = request.user,
+                        presentation_title = data['presentation_title'],
+                        presentation_time = data['presentation_time'],                               
+                        presentation_date = data['presentation_date']
+            )
+            presentataion.save()
+        except ValidationError as e:
+            return Response({'message': 'time is not valid(HH:MM)'},status=400)
+        return Response({'message': 'create presentation', 'presentation_id' : presentataion.presentation_id },status=200)
 
     @login_check
     def get(self,request):
         queryset = Presentation.objects.filter(user_id = request.user)
-        response = PresentationSerializer(queryset,many=True).data
+
+        queryset_result = PresentationResult.objects.filter(user_id = request.user.user_id)
+        response = PresentationSerializer(queryset,many=True).data # json 형태로 바꿔줌
+        i=0
+        for q in queryset:
+            presentation_result_info = []
+            for qq in queryset_result:
+                if q.presentation_id == qq.presentation_id:
+                    presentation_result_info.append([qq.presentation_result_id,qq.presentation_result_date])
+            response[i]["presentation_result_info"]=presentation_result_info
+            i+=1
+        
+        print(response)
         return Response(response,status=200)
 
 
@@ -169,22 +187,25 @@ class PresentationAPI(APIView):
         - 발표연습 수정 : url뒤의 <int:pk> 로 특정 발표연습 수정 로그인토큰, presentation_title, presentation_time, presentation_date, presentation_ex_dupword, presentation_ex_improper 필요
         - 발표연습 삭제 : url뒤의 <int:pk> 로 특정 발표연습 삭제 로그인토큰 필요
     """
+    @login_check
     def get(self,request,pk):
         try:
-            queryset = Presentation.objects.get(pk=pk)
+            queryset = Presentation.objects.prefetch_related('presentation_file').get(presentation_id=pk)
         except Presentation.DoesNotExist:
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
-        serializer = PresentationSerializer(queryset)
-        return Response(serializer.data,status=200)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
+        serializer = PresentationSerializer(queryset).data
+        serializer["presentation_file_url"]=queryset.presentation_file.get().file.url
+        print(serializer)
+        return Response(serializer,status=200)
     
     @login_check
     def put(self,request,pk):
         try:
             queryset = Presentation.objects.get(pk=pk)
         except Presentation.DoesNotExist:
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if queryset.user_id != request.user:
-            return Response({'massage':'DO NOT LOGIN ERROR'},status=400)
+            return Response({'message':'DO NOT LOGIN ERROR'},status=400)
         data = request.data
         print(data)
         queryset.presentation_title = data['presentation_title']
@@ -197,7 +218,7 @@ class PresentationAPI(APIView):
         except Exception as e:
             return Response(e,status=400)
 
-        return Response({'massage':queryset.presentation_title+' presenatataion update success'},status=200)
+        return Response({'message':queryset.presentation_title+' presenatataion update success'},status=200)
 
     @login_check
     def delete(self,request,pk):
@@ -206,9 +227,9 @@ class PresentationAPI(APIView):
             presentation_title = queryset.presentation_title
             queryset.delete()
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         
-        return Response({'massage': presentation_title +' is deleted'},status=200)
+        return Response({'message': presentation_title +' is deleted'},status=200)
 
 
 class KeyWordAPI(APIView):
@@ -227,29 +248,29 @@ class KeyWordAPI(APIView):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data =request.data
         for key,val in data.items():
             try:
                 int(key)
             except ValueError :
-                return Response({'massage':'key is not integer error'},status=400)
+                return Response({'message':'key is not integer error'},status=400)
             if len(val) and (not KeyWord.objects.filter(presentation_id =presentation, keyword_page=int(key)).exists()):
                 KeyWord(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
                 print(key,val)
-        return Response({'massage':'create keyword success'},status=200)
+        return Response({'message':'create keyword success'},status=200)
     
     @login_check
     def get(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         queryset = KeyWord.objects.filter(presentation_id=presentation).order_by('keyword_page')
         serializer = KeyWordSerializer(queryset,many=True)
@@ -260,36 +281,36 @@ class KeyWordAPI(APIView):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data = request.data
         for key,val in data.items():
             try:
                 int(key)
             except ValueError :
-                return Response({'massage':'key is not integer error'},status=400)
+                return Response({'message':'key is not integer error'},status=400)
             keyword = KeyWord.objects.filter(presentation_id = presentation, keyword_page=int(key))
             if len(val) and keyword.exists():
                 keyword.update(keyword_contents=val)
             elif len(val) :
                 KeyWord(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
             print(key,val)
-        return Response({'massage':'update keyword success'},status=200)
+        return Response({'message':'update keyword success'},status=200)
 
     @login_check
     def delete(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         queryset = KeyWord.objects.filter(presentation_id=presentation)
         queryset.delete()
-        return Response({'massage':'keyword delete success'},status=200)
+        return Response({'message':'keyword delete success'},status=200)
 
 
 
@@ -309,29 +330,29 @@ class ScriptAPI(APIView):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data =request.data
         for key,val in data.items():
             try:
                 int(key)
             except ValueError :
-                return Response({'massage':'key is not integer error'},status=400)
+                return Response({'message':'key is not integer error'},status=400)
             if len(val) and (not Script.objects.filter(presentation_id=presentation,keyword_page=int(key)).exists()):
                 Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
                 print(key,val)
-        return Response({'massage':'create keyword success'},status=200)
+        return Response({'message':'create keyword success'},status=200)
     
     @login_check
     def get(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         queryset = Script.objects.filter(presentation_id=presentation).order_by('keyword_page')
         serializer = KeyWordSerializer(queryset,many=True)
@@ -342,35 +363,35 @@ class ScriptAPI(APIView):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data = request.data
         for key,val in data.items():
             try:
                 int(key)
             except ValueError :
-                return Response({'massage':'key is not integer error'},status=400)
+                return Response({'message':'key is not integer error'},status=400)
             keyword = Script.objects.filter(presentation_id=presentation,keyword_page=int(key))
             if len(val) and keyword.exists():
                 keyword.update(keyword_contents=val)
             elif len(val) :
                 Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
             print(key,val)
-        return Response({'massage':'update keyword success'},status=200)
+        return Response({'message':'update keyword success'},status=200)
 
     @login_check
     def delete(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage':'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         queryset = Script.objects.filter(presentation_id=presentation)
         queryset.delete()
-        return Response({'massage':'keyword delete success'},status=200)
+        return Response({'message':'keyword delete success'},status=200)
 
 class AllFileAPI(APIView):
     """
@@ -396,38 +417,38 @@ class PresentationFileAPI(APIView):
     @login_check
     def post(self,request,presentation_id):
         if  "file" not in request.FILES :
-            return Response({'massage':'missing file error'},status=400)
+            return Response({'message':'missing file error'},status=400)
         elif os.path.splitext(request.FILES['file'].name)[1]!='.pdf' :
-            return Response({'massage':'only possible file extenstion is PDF'})
+            return Response({'message':'only possible file extenstion is PDF'})
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
 
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         
         if PresentationFile.objects.filter(presentation_id=presentation).exists():
-            return Response({'massage': 'already file exists error'},status=400)
+            return Response({'message': 'already file exists error'},status=400)
 
         file =PresentationFile(presentation_id = presentation,user_id = request.user.user_id,file_name = request.FILES['file'].name,file = request.FILES['file'])
         file.save()
-        return Response({'massage': 'upload file success','file_id' : file.presentationfile_id},status=200)
+        return Response({'message': 'upload file success','file_id' : file.presentationfile_id},status=200)
 
     @login_check
     def get(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(presentation_id=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         
         try:
             file= PresentationFile.objects.get(presentation_id=presentation)
         except PresentationFile.DoesNotExist :
-            return Response({'massage':'file is not exist error'},status=400)
+            return Response({'message':'file is not exist error'},status=400)
 
 
         return Response({"file_id":file.presentationfile_id ,"presentation_id":file.presentation_id.presentation_id ,"file_name" : file.file_name, "file_url" : file.file.url },status=200)
@@ -435,39 +456,39 @@ class PresentationFileAPI(APIView):
     @login_check
     def put(self,request,presentation_id):
         if  "file" not in request.FILES :
-            return Response({'massage':'missing file error'},status=400)
+            return Response({'message':'missing file error'},status=400)
         elif os.path.splitext(request.FILES['file'].name)[1]!='.pdf' :
-            return Response({'massage':'only possible file extenstion is PDF'})
+            return Response({'message':'only possible file extenstion is PDF'})
 
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         
         try:
             file= PresentationFile.objects.get(presentation_id=presentation)
         except PresentationFile.DoesNotExist :
-            return Response({'massage':'file is not exist error'},status=400)
+            return Response({'message':'file is not exist error'},status=400)
         file.file_name=request.FILES['file'].name
         file.file=request.FILES['file']
         file.save()
-        return Response({'massage':str(presentation_id)+" presentation file update success"},status=200)
+        return Response({'message':str(presentation_id)+" presentation file update success"},status=200)
 
     @login_check
     def delete(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         
         if presentation.user_id.user_id != request.user.user_id:
-            return Response({'massage': 'DONT ACEESS PRESENTATION'},status=400)
+            return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         
         PresentationFile.objects.filter(presentation_id=presentation).delete()
-        return Response({'massage':str(presentation_id)+' presentation file is deleted'},status=200)
+        return Response({'message':str(presentation_id)+' presentation file is deleted'},status=200)
 
 class PresentationResultAPI(APIView):
     """
@@ -487,31 +508,31 @@ class PresentationResultAPI(APIView):
     def post(self,request,presentation_id):
         data =request.data
         if "audio_file" not in request.FILES :
-            return Response({'massage':'missing file error'},status=400)
+            return Response({'message':'missing file error'},status=400)
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         # res = requests.post('http://10.1.205.38:8000/',files ={"file":open(request.FILES["audio_file"],'rb')}).json()
         # PresentationResult(presentation_id=presentation,user_id=request.user.user_id,presentation_result_file=request.FILE['audio_file'],
         # presentation_result_time=data["audio_time"],presentation_result_score=res["score"],presentation_result_dupword=res["dupword"],
         # presentation_result_improper=res["improper"],presentation_result_fillerwords=res["fillerwords"],presentation_result_stammering=res["stammering"],
         # presentation_result_gap=res["gap"],presentation_result_shake=res["shake"],presentation_result_tune=res["tune"],presentation_result_speed=res["speed"]).save()
         
-        return Response({'massage':'result success'},status=200)
+        return Response({'message':'result success'},status=200)
 
     @login_check
     def get(self,request,presentation_id):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         queryset = PresentationResult.objects.filter(presentation_id=presentation)
         # serializer = PresentationResultSerializer(queryset,many=True)
         response = []
         for q in queryset:
             response.append({"presentation_result_id":q.presentation_result_id ,"presentation_id":q.presentation_id.presentation_id,
-            "user_id":q.user_id,"presentation_result_data":q.presentation_result_date})
+            "user_id":q.user_id,"presentation_result_date":q.presentation_result_date})
         return Response(response,status=200)
     
     @login_check
@@ -519,9 +540,9 @@ class PresentationResultAPI(APIView):
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
-            return Response({'massage': 'INVALID PRESENTATION_ID'},status=400)
+            return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         PresentationResult.objects.filter(presentation_id=presentation).delete()
-        return Response({'massage':str(presentation_id)+' result is all deleted'},status=200)
+        return Response({'message':str(presentation_id)+' result is all deleted'},status=200)
             
         
 class PresentationResultDetailAPI(APIView):
@@ -536,7 +557,7 @@ class PresentationResultDetailAPI(APIView):
         try:
             queryset = PresentationResult.objects.get(pk=presentation_result_id)
         except PresentationResult.DoesNotExist :
-            return Response({'massage':'not found that result error'},status=400)
+            return Response({'message':'not found that result error'},status=400)
         response = PresentationResultSerializer(queryset).data
         response['presentation_result_audiofile']=queryset.presentation_result_audiofile.url
         return Response(response,status=200)
@@ -546,9 +567,30 @@ class PresentationResultDetailAPI(APIView):
         try:
             queryset = PresentationResult.objects.get(pk=presentation_result_id)
         except PresentationResult.DoesNotExist :
-            return Response({'massage':'not found that result error'},status=400)
+            return Response({'message':'not found that result error'},status=400)
         queryset.delete()
-        return Response({'massage':str(presentation_result_id)+' presentation_result is deleted'},status=200)
+        return Response({'message':str(presentation_result_id)+' presentation_result is deleted'},status=200)
         
-        
+
+class PresentationResultTestAPI(APIView):
+    """
+        테스트 API
+        {
+            "audio_file" : file
+        }    
+    """
+    @login_check
+    def post(self,request):
+        if "audio_file" not in request.FILES :
+            return Response({'message':'missing file error'},status=400)
+        try:
+            res = requests.post('http://10.1.205.38:8000/analysis',files ={"audio_file":request.FILES["audio_file"]}) 
+        except Exception :
+            return Response({'message':'error'},status=400)
+
+        if (res.status_code == 400):
+            return Response(res.json(),status=400)
+
+        print(res.json())
+        return Response(res.json(),status=200)
 

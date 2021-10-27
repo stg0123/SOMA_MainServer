@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import *
 
 class PresentationSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Presentation
         fields = ('presentation_id','user_id','presentation_title','presentation_time','presentation_date','presentation_update_date','presentation_ex_dupword','presentation_ex_improper')
