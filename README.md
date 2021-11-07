@@ -1,4 +1,4 @@
-<center><img src="/resource/speechteacher_logo.jpg" width="90%"/></center>
+<center><img src="/resource/speechteacher_logo.png" width="90%"/></center>
 
 ## ✨사용자 음성 분석을 통한 맞춤형 발표 코칭 서비스✨  
 
@@ -20,7 +20,7 @@
 
 
 ## 🌟시스템 구성도  
-![image](/resource/system_structure.PNG)
+![image](/resource/system_structure.png)
 
 ## 🔎AWS 구성도  
 ![image](/resource/aws_structure.png)
@@ -42,3 +42,4 @@ st_user, presentation, presentation_file, presentation_keyword, presentation_scr
 
 - serializers.py<br>
 직렬화를 통해 DB쿼리 결과를 쉽게 json형식으로 변경<br>
+
