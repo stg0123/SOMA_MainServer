@@ -1,4 +1,4 @@
-<p align="center"><img src="/resource/speechteacher_logo.png" width="90%"/></p>
+<p align="center"><img src="/resource/speechteacher_logo2.jpg" width="90%"/></p>
 
 ## ✨사용자 음성 분석을 통한 맞춤형 발표 코칭 서비스✨  
 
