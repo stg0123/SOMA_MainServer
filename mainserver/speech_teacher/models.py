@@ -4,8 +4,8 @@ from django.core.cache import cache
 
 class ST_User(models.Model):
     user_id = models.AutoField(primary_key=True)
-    user_email = models.CharField(max_length=255)
-    user_password = models.CharField(max_length=255)
+    user_email = models.CharField(max_length=255, null=False)
+    user_password = models.TextField(null = False)
     user_nickname = models.CharField(max_length=255)
     user_create_date = models.DateTimeField(auto_now_add=True)
     user_update_date = models.DateTimeField(auto_now=True)
@@ -74,7 +74,7 @@ class PresentationFile(models.Model):
     presentationfile_id = models.AutoField(primary_key=True)
     presentation_id = models.ForeignKey("presentation",related_name='presentation_file',on_delete=models.CASCADE,db_column='presentation_id',null=False)
     user_id = models.IntegerField(null=False)
-    file_name = models.CharField(max_length=50,null=False)
+    file_name = models.TextField(null=False)
     file = models.FileField(upload_to='presentation_file')
 
     def __str__(self):
@@ -92,16 +92,8 @@ class PresentationResult(models.Model):
     presentation_id = models.ForeignKey("presentation",related_name='presentation_result',on_delete=models.CASCADE,db_column='presentation_id',null=False)
     user_id = models.IntegerField(null=False)
     presentation_result_audiofile = models.FileField(upload_to='audio_file')
-    presentation_result_time = models.TimeField(null=False)
-    presentation_result_score = models.IntegerField(null=True,blank=True)
-    presentation_result_dupword = models.TextField(null=True,blank=True)
-    presentation_result_improper = models.TextField(null=True,blank=True)
-    presentation_result_fillerwords = models.TextField(null=True,blank=True)
-    presentation_result_stammering = models.TextField(null=True,blank=True)
-    presentation_result_gap = models.TextField(null=True,blank=True)
-    presentation_result_shake = models.TextField(null=True,blank=True)
-    presentation_result_tune = models.TextField(null=True,blank=True)
-    presentation_result_speed = models.TextField(null=True,blank=True)
+    presentation_result_time = models.IntegerField(null = False)
+    presentation_result = models.JSONField(null=False)
     presentation_result_date = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -110,3 +102,17 @@ class PresentationResult(models.Model):
     class Meta:
         managed = False
         db_table = 'presentation_result'
+
+class Knowhow(models.Model):
+    knowhow_id = models.AutoField(primary_key=True)
+    knowhow_title = models.CharField(max_length=255)
+    knowhow_img = models.FileField(upload_to='knowhow_img',null=True,blank=True)
+    knowhow_contents = models.TextField(null=True,blank=True)
+    
+    def __str__(self):
+        return str(self.knowhow_title)
+
+    class Meta:
+        managed = False
+        db_table = 'knowhow'
+     

@@ -165,10 +165,10 @@ class UserPresentationAPI(APIView):
         response = PresentationSerializer(queryset,many=True).data # json 형태로 바꿔줌
         i=0
         for q in queryset:
-            presentation_result_info = []
+            presentation_result_info = 0
             for qq in queryset_result:
-                if q.presentation_id == qq.presentation_id:
-                    presentation_result_info.append([qq.presentation_result_id,qq.presentation_result_date])
+                if q.presentation_id == qq.presentation_id.presentation_id:
+                    presentation_result_info+=1
             response[i]["presentation_result_info"]=presentation_result_info
             i+=1
         
@@ -236,9 +236,9 @@ class KeyWordAPI(APIView):
     """
     인풋
     {
-        "1" : "자장면, 볶음밥, 탕수육",
-        "2" : "어쩌고, 저쩌고",
-        "4" : "스트링, 스트링"        
+        "0" : "자장면, 볶음밥, 탕수육",
+        "1" : "어쩌고, 저쩌고",
+        "3" : "스트링, 스트링"        
     }
     
     """
@@ -253,14 +253,10 @@ class KeyWordAPI(APIView):
             return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data =request.data
+        print(data)
         for key,val in data.items():
-            try:
-                int(key)
-            except ValueError :
-                return Response({'message':'key is not integer error'},status=400)
-            if len(val) and (not KeyWord.objects.filter(presentation_id =presentation, keyword_page=int(key)).exists()):
+            if len(val) and isinstance(key,str):
                 KeyWord(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
-                print(key,val)
         return Response({'message':'create keyword success'},status=200)
     
     @login_check
@@ -318,8 +314,8 @@ class ScriptAPI(APIView):
     """
     인풋
     {
-        "1" : "대본1",
-        "2" : "대본2",
+        "0" : "대본1",
+        "1" : "대본2",
         "4" : "대본3"        
     }
     
@@ -335,14 +331,10 @@ class ScriptAPI(APIView):
             return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
         data =request.data
+        print(data)
         for key,val in data.items():
-            try:
-                int(key)
-            except ValueError :
-                return Response({'message':'key is not integer error'},status=400)
-            if len(val) and (not Script.objects.filter(presentation_id=presentation,keyword_page=int(key)).exists()):
-                Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
-                print(key,val)
+            if len(val) and isinstance(key,str):
+                Script(presentation_id=presentation,script_page=int(key),script_contents=val).save()
         return Response({'message':'create keyword success'},status=200)
     
     @login_check
@@ -354,8 +346,8 @@ class ScriptAPI(APIView):
         if presentation.user_id.user_id != request.user.user_id:
             return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
 
-        queryset = Script.objects.filter(presentation_id=presentation).order_by('keyword_page')
-        serializer = KeyWordSerializer(queryset,many=True)
+        queryset = Script.objects.filter(presentation_id=presentation).order_by('script_page')
+        serializer = ScriptSerializer(queryset,many=True)
         return Response(serializer.data,status=200)
 
     @login_check
@@ -373,13 +365,13 @@ class ScriptAPI(APIView):
                 int(key)
             except ValueError :
                 return Response({'message':'key is not integer error'},status=400)
-            keyword = Script.objects.filter(presentation_id=presentation,keyword_page=int(key))
-            if len(val) and keyword.exists():
-                keyword.update(keyword_contents=val)
+            script = Script.objects.filter(presentation_id=presentation,script_page=int(key))
+            if len(val) and script.exists():
+                script.update(script_contents=val)
             elif len(val) :
-                Script(presentation_id=presentation,keyword_page=int(key),keyword_contents=val).save()
+                Script(presentation_id=presentation,script_page=int(key),script_contents=val).save()
             print(key,val)
-        return Response({'message':'update keyword success'},status=200)
+        return Response({'message':'update script success'},status=200)
 
     @login_check
     def delete(self,request,presentation_id):
@@ -416,18 +408,19 @@ class PresentationFileAPI(APIView):
     """
     @login_check
     def post(self,request,presentation_id):
-        if  "file" not in request.FILES :
+        if "file" not in request.FILES :
             return Response({'message':'missing file error'},status=400)
         elif os.path.splitext(request.FILES['file'].name)[1]!='.pdf' :
-            return Response({'message':'only possible file extenstion is PDF'})
+            return Response({'message':'only possible file extenstion is PDF'},status=400)
+        
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
             return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
-
         if presentation.user_id.user_id != request.user.user_id:
             return Response({'message': 'DONT ACEESS PRESENTATION'},status=400)
         
+
         if PresentationFile.objects.filter(presentation_id=presentation).exists():
             return Response({'message': 'already file exists error'},status=400)
 
@@ -496,8 +489,8 @@ class PresentationResultAPI(APIView):
     -연습의 결과 생성
     입력
     {
-        "audio_file":audio,
-        "audio_time":int,
+        "audio_file": file
+        "presentation_result_time": int
     }
     결과 조회
     - 모든 결과의 결과id,연습번호,생성일을 반환 > 이걸가지고 디테일에서 찾아오면됨 
@@ -506,20 +499,26 @@ class PresentationResultAPI(APIView):
     """
     @login_check
     def post(self,request,presentation_id):
-        data =request.data
+        data = request.data
+        time = data['presentation_result_time']
+        print(time)
         if "audio_file" not in request.FILES :
             return Response({'message':'missing file error'},status=400)
         try:
             presentation = Presentation.objects.get(pk=presentation_id)
         except Presentation.DoesNotExist :
             return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
-        # res = requests.post('http://10.1.205.38:8000/',files ={"file":open(request.FILES["audio_file"],'rb')}).json()
-        # PresentationResult(presentation_id=presentation,user_id=request.user.user_id,presentation_result_file=request.FILE['audio_file'],
-        # presentation_result_time=data["audio_time"],presentation_result_score=res["score"],presentation_result_dupword=res["dupword"],
-        # presentation_result_improper=res["improper"],presentation_result_fillerwords=res["fillerwords"],presentation_result_stammering=res["stammering"],
-        # presentation_result_gap=res["gap"],presentation_result_shake=res["shake"],presentation_result_tune=res["tune"],presentation_result_speed=res["speed"]).save()
+
+        try:
+            res = requests.post('http://10.1.205.38:8000/analysis',files ={"audio_file":request.FILES["audio_file"]}) 
+        except Exception :
+            return Response({'message':'error'},status=400)
+        res_data = res.json()
+        print(res_data)
+        PresentationResult(presentation_id = presentation, user_id = request.user.user_id, presentation_result_audiofile = request.FILES["audio_file"],
+                            presentation_result_time=int(time), presentation_result = res_data).save()
         
-        return Response({'message':'result success'},status=200)
+        return Response(res_data,status=200)
 
     @login_check
     def get(self,request,presentation_id):
@@ -528,11 +527,10 @@ class PresentationResultAPI(APIView):
         except Presentation.DoesNotExist :
             return Response({'message': 'INVALID PRESENTATION_ID'},status=400)
         queryset = PresentationResult.objects.filter(presentation_id=presentation)
-        # serializer = PresentationResultSerializer(queryset,many=True)
         response = []
         for q in queryset:
-            response.append({"presentation_result_id":q.presentation_result_id ,"presentation_id":q.presentation_id.presentation_id,
-            "user_id":q.user_id,"presentation_result_date":q.presentation_result_date})
+            response.append({"presentation_result_id":q.presentation_result_id ,"presentation_result":q.presentation_result,"audiofile_url": q.presentation_result_audiofile.url,
+            "presentation_result_time":q.presentation_result_time ,"presentation_result_date":q.presentation_result_date})
         return Response(response,status=200)
     
     @login_check
@@ -592,5 +590,39 @@ class PresentationResultTestAPI(APIView):
             return Response(res.json(),status=400)
 
         print(res.json())
+        print(res)
+        print(type(res))
         return Response(res.json(),status=200)
 
+class KnowhowAPI(APIView):
+    """
+        노하우 생성, 조회
+        {
+            'knowhow_img' : file,
+            'knowhow_title' : str,
+            'knowhow_contents' : str
+        }
+    """
+    def post(self,request):
+        data = request.data
+        if "knowhow_img" not in request.FILES :
+            return Response({'message':'missing file error'},status=400)
+        
+        Knowhow(knowhow_title=data['knowhow_title'],knowhow_img = request.FILES["knowhow_img"],knowhow_contents=data['knowhow_contents']).save()
+        return Response({'message':'knowhow create success'},status=200)
+        
+    def get(self,request):
+        queryset = Knowhow.objects.all()
+        res = []
+        for q in queryset:
+            res.append({'knowhow_title':q.knowhow_title , 'knowhow_img_url':q.knowhow_img.url ,'knowhow_contents':q.knowhow_contents })
+        return Response(res,status=200)
+
+    def delete(self,request):
+        data = request.data
+        if "knowhow_id" not in data:
+            return Response({'message':'missing knowhow_id'},status=400)
+        queryset = Knowhow.objects.filter(knowhow_id =data['knowhow_id'])
+        queryset.delete()
+        return Response({'message':'knowhow delete success'},status=200)
+        

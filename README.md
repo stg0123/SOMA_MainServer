@@ -1,4 +1,4 @@
-![image](/resource/speechteacher_logo.jpg){width="90%"}
+<img src="/resource/speechteacher_logo.jpg" width="90%"/>
 
 ## ✨사용자 음성 분석을 통한 맞춤형 발표 코칭 서비스✨  
 

@@ -54,11 +54,11 @@ INSTALLED_APPS = [
     'drf_yasg',
 ]
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_RENDERER_CLASSES': [
-#         'rest_framework.renderers.JSONRenderer',
-#     ]
-# }
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
+}
 
 
 MIDDLEWARE = [
@@ -97,8 +97,15 @@ WSGI_APPLICATION = 'mainserver.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'speechteacher',
+        'USER': 'admin',
+        'PASSWORD': get_secret("AWS_MYSQL_PASSWORD"),
+        'HOST': get_secret("AWS_MYSQL_HOST"),
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command':"SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -133,7 +140,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)

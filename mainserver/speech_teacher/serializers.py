@@ -31,6 +31,10 @@ class PresentationFileSerializer(serializers.ModelSerializer):
 class PresentationResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = PresentationResult
-        fields = ('presentation_result_id','presentation_id','user_id','presentation_result_audiofile','presentation_result_time','presentation_result_score',
-        'presentation_result_dupword','presentation_result_improper','presentation_result_fillerwords','presentation_result_stammering',
-        'presentation_result_gap','presentation_result_shake','presentation_result_tune','presentation_result_speed','presentation_result_date')
+        fields = ('presentation_result_id','presentation_id','user_id','presentation_result_audiofile','presentation_result_time'
+        'presentation_result','presentation_result_date')
+
+class KnowhowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Knowhow
+        fields = ('knowhow_id','knowhow_title','knowhow_img','knowhow_contents')
