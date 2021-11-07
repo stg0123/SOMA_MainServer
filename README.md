@@ -29,7 +29,7 @@
 ![image](/resource/ERD_structure.png)
 
 
-## 😥회원관리 API
+## 😁django 구성
 
 - view.py <br>
 회원관리, 발표연습, 발표자료, 발표키워드, 발표대본, 발표결과 CRUD 수행 API 구현<br>
