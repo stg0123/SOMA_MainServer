@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db.models import query
 from django.http.response import JsonResponse
 from mainserver.settings import SECRET_KEY
 from rest_framework.response import Response
@@ -570,29 +571,24 @@ class PresentationResultDetailAPI(APIView):
         return Response({'message':str(presentation_result_id)+' presentation_result is deleted'},status=200)
         
 
-class PresentationResultTestAPI(APIView):
-    """
-        테스트 API
-        {
-            "audio_file" : file
-        }    
-    """
-    @login_check
+class TestAPI(APIView):
     def post(self,request):
-        if "audio_file" not in request.FILES :
-            return Response({'message':'missing file error'},status=400)
-        try:
-            res = requests.post('http://10.1.205.38:8000/analysis',files ={"audio_file":request.FILES["audio_file"]}) 
-        except Exception :
-            return Response({'message':'error'},status=400)
+        data = request.data
+        TESTDB(testdb_num =int(data['testdb_num']),testdb_string = data['testdb_string']).save()
+        return Response({'message':'create success'},status=200)
 
-        if (res.status_code == 400):
-            return Response(res.json(),status=400)
+    def get(self,request):
+        queryset = TESTDB.objects.all()
+        serializer = TESTDBSerializer(queryset,many=True)
+        return Response(serializer.data,status=200)
 
-        print(res.json())
-        print(res)
-        print(type(res))
-        return Response(res.json(),status=200)
+@api_view(['GET'])
+def TESTgetAPI(request,testdb_id):
+    queryset = TESTDB.objects.get(testdb_id=testdb_id)
+    serializer = TESTDBSerializer(queryset)
+    return Response(serializer.data,status=200)
+
+
 
 class KnowhowAPI(APIView):
     """

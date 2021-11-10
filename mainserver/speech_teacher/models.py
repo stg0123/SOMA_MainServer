@@ -1,6 +1,7 @@
 from django.db import models
 import boto3
 from django.core.cache import cache
+from django.db.models import manager
 
 class ST_User(models.Model):
     user_id = models.AutoField(primary_key=True)
@@ -116,3 +117,16 @@ class Knowhow(models.Model):
         managed = False
         db_table = 'knowhow'
      
+
+
+class TESTDB(models.Model):
+    testdb_id = models.AutoField(primary_key=True)
+    testdb_num = models.IntegerField(null=False)
+    testdb_string = models.CharField(max_length=50,null=False)
+
+    def __str__(self):
+        return str(self.testdb_string)
+
+    class Meta:
+        managed = False
+        db_table = 'testdb'

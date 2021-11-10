@@ -38,3 +38,8 @@ class KnowhowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Knowhow
         fields = ('knowhow_id','knowhow_title','knowhow_img','knowhow_contents')
+
+class TESTDBSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TESTDB
+        fields = ('testdb_id','testdb_num','testdb_string')
