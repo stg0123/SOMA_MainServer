@@ -24,7 +24,7 @@ class ST_User(models.Model):
 
     class Meta:
         managed = False # 자동 migration 하지않음
-        db_table = "st_user" # 테이블 연결
+        db_table = 'st_user' # 테이블 연결
 
 class Presentation(models.Model):
     presentation_id = models.AutoField(primary_key=True)

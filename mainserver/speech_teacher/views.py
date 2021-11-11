@@ -102,6 +102,7 @@ class UserAPI(APIView):
         hashed_password = bcrypt.hashpw(data['user_password'].encode('utf-8'),bcrypt.gensalt()).decode('utf-8')
         ST_User(user_email = data['user_email'],user_password = hashed_password,user_nickname = data['user_nickname']).save()
         # ST_User.objects.create(user_email = data['user_email'],user_password = hashed_password ,user_nickname = data['user_nickname'])
+
         return Response({"message" : "user create success"},status=200)
     
     @login_check
