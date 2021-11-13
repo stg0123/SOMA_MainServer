@@ -61,7 +61,7 @@ def changepw(request):
 
 @api_view(['GET'])
 def lookup(request):
-    users =cache.get_or_set('users',ST_User.objects.all().values('user_id','user_email','user_nickname','user_create_date'))
+    users =ST_User.objects.all().values('user_id','user_email','user_nickname','user_create_date')
     return Response(list(users),status=200)
 
 class UserAPI(APIView):
