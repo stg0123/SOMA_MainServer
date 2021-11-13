@@ -5,4 +5,5 @@ test.py
 memo.md
 
 /mainserver/secrets.json
-mainserver/uwsgi1.log
+
+/mainserver/uwsgi1.log
