@@ -36,7 +36,8 @@ SECRET_KEY = get_secret("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['kospeech.com','www.kospeech.com','15.165.155.13']
+# ALLOWED_HOSTS = ['kospeech.com','www.kospeech.com','15.165.155.13']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
