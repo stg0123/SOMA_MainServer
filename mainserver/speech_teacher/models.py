@@ -11,14 +11,6 @@ class ST_User(models.Model):
     user_create_date = models.DateTimeField(auto_now_add=True)
     user_update_date = models.DateTimeField(auto_now=True)
 
-    def save(self, *args, **kwargs):
-        cache.delete('users')
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        cache.delete('users')
-        super().delete(*args, **kwargs)
-
     def __str__(self):
         return str(self.user_email)
 

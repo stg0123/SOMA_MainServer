@@ -21,7 +21,6 @@ import jwt
 @api_view(['GET'])
 def HelloWorld(request):
     res = "helloworld kospeech (MSS)"
-    print(request._request.META)
     return Response(res,status=200)
 
 @api_view(['POST'])
