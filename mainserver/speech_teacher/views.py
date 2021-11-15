@@ -195,7 +195,12 @@ class PresentationAPI(APIView):
         except Presentation.DoesNotExist:
             return Response({'message':'INVALID PRESENTATION_ID'},status=400)
         serializer = PresentationSerializer(queryset).data
-        serializer["presentation_file_url"]=queryset.presentation_file.get().file.url
+        try:
+            presentation_file = queryset.presentation_file.get()
+        except PresentationFile.DoesNotExist :
+            return Response(serializer,status=200)
+
+        serializer["presentation_file_url"]=presentation_file.file.url
         print(serializer)
         return Response(serializer,status=200)
     
