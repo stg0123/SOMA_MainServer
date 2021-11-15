@@ -20,10 +20,10 @@
 
 
 ## 🌟시스템 구성도  
-![image](/resource/system_structure.png)
+![image](/resource/system_archtecture.png)
 
 ## 🔎AWS 구성도  
-![image](/resource/aws_structure.png)
+![image](/resource/aws_archtecture.png)
 
 ## ⚙️ERD
 ![image](/resource/ERD_structure.png)
