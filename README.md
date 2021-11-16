@@ -1,7 +1,7 @@
 ![image](/resource/speechteacher_logo2.jpg)
 
 ## ✨사용자 음성 분석을 통한 맞춤형 발표 코칭 서비스✨  
-
+- AWS 클라우드 환경 Django를 활용한 RESTful api 백엔드 서버 개발 (담당: 손태균)
 
 ## ✨Soma_MainServer✨  
 - [Soma_MainServer](https://git.swmgit.org/swm-12/12_swm48/soma_mainserver)
