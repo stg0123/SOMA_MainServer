@@ -520,6 +520,8 @@ class PresentationResultAPI(APIView):
         except Exception :
             return Response({'message':'error'},status=400)
         res_data = res.json()
+        if res.status_code == 400:
+            return Response(res_data,status=400)
         print(res_data)
         PresentationResult(presentation_id = presentation, user_id = request.user.user_id, presentation_result_audiofile = request.FILES["audio_file"],
                             presentation_result_time=int(time), presentation_result = res_data).save()
