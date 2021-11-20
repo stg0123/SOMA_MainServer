@@ -88,7 +88,6 @@ class UserAPI(APIView):
         print(serializer)
         if not serializer.is_valid():
             return Response(serializer.errors,status=400)
-
         if not re.search(email_regex,data['user_email']):
             return Response({"message": "invalid email"}, status = 400)
 
