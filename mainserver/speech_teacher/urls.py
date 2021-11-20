@@ -1,6 +1,5 @@
 from django.urls import path,include
 from .views import *
-
 urlpatterns = [
     path('',HelloWorld),
     path('lookup/',lookup),
@@ -19,3 +18,6 @@ urlpatterns = [
     path('test/',TestAPI.as_view()),
     path('test/<int:testdb_id>',TESTgetAPI),
 ]
+
+
+
