@@ -35,11 +35,27 @@
 회원관리, 발표연습, 발표자료, 발표키워드, 발표대본, 발표결과 CRUD 수행 API 구현<br>
 
 - models.py<br>
-st_user, presentation, presentation_file, presentation_keyword, presentation_script, presentation_result, knowhow 테이블 대응 모델 생성<br>
+st_user, presentation, presentation_file, presentation_keyword, presentation_script, presentation_result, knowhow 테이블 모델 생성<br>
 
 - utils.py<br>
 로그인이 필요한 기능을 사용할때 체크해주는 login_check함수 구현<br>
 
 - serializers.py<br>
-직렬화를 통해 DB쿼리 결과를 쉽게 json형식으로 변경<br>
+직렬화를 통해 DB쿼리 결과를 json형식으로 변경<br>
 
+
+## 👀화면 설계 및 소개
+
+### 스플레쉬 , 로그인 및 메인 페이지
+![image](/resource/front-end1.png)
+
+### 일정, 노하우, 마이 페이지
+![image](/resource/front-end2.png)
+
+### ️발표 진행 및 결과 페이지
+![image](/resource/front-end3.png)
+
+### 앱 썸네일
+<img src="/resource/slide1.png" width="300px"> <img src="/resource/slide2.png" width="300px"> <br>
+<img src="/resource/slide3.png" width="250px"> <img src="/resource/slide4.png" width="250px"> <img src="/resource/slide5.png" width="250px"> <br>
+<img src="/resource/slide6.png" width="250px"> <img src="/resource/slide7.png" width="250px"> <img src="/resource/slide8.png" width="250px"> <br>
