@@ -60,8 +60,9 @@ def changepw(request):
 
 @api_view(['GET'])
 def lookup(request):
-    users =ST_User.objects.all().values('user_id','user_email','user_nickname','user_create_date')
-    return Response(list(users),status=200)
+    user =ST_User.objects.get(user_id=1)
+    serializer = ST_UserSerializer(user)
+    return Response(serializer.data,status=200)
 
 class UserAPI(APIView):
     """
